@@ -4,11 +4,9 @@ import logging
 import os
 import re
 import string
-from subprocess import CalledProcessError
 
 from discord import File
 from discord.ext import commands
-from pytz import timezone, UnknownTimeZoneError
 
 
 class Utility(commands.Cog):
@@ -51,69 +49,17 @@ class Utility(commands.Cog):
 
         return newMessage
 
-    def getRoles(self, ctx, reserved = False, sort = False, personal = False):
-        self.logger.debug("getRoles called")
-
-        if not personal:
-            roles = ctx.message.author.guild.roles[1:]
-        else:
-            roles = ctx.message.author.roles[1:]
-
-        if sort:
-            roles.sort(key = self.roleListKey)
-
-        if not reserved:
-            newRoles = []
-            for role in roles:
-                if role.colour.value == 0:
-                    newRoles.append(role)
-            return newRoles
-
-        return roles
-
-    def searchRoles(self, ctx, roleQuery, autocomplete = False, reserved = False, censorReserved = True):
-        self.logger.debug("searchRoles called")
-
-        roles = self.getRoles(ctx, reserved = reserved)
-        roleQuery = roleQuery.lower()
-        candidate = None
-
-        for role in roles:
-            roleName = role.name.lower()
-            if roleName == roleQuery:
-                candidate = role
-                break
-
-            if autocomplete and re.match(re.escape(roleQuery), roleName):
-                candidate = role
-
-        if candidate:
-            if candidate.colour.value == 0:
-                return candidate
-            if censorReserved:
-                return "RESERVED"
-            return candidate
-
-        return None
-
     @staticmethod
     def roleListKey(elem):
         return elem.name.lower()
 
-    def timeUntil(self, time = "opday", modifier = 0):
-        # self.logger.debug("timeUntil called with time = {}".format(time))
+    def timeUntilOptime(self):
         today = datetime.now(tz = timezone('Europe/London'))
-        opday = None
-
-        if time == "opday":
-            daysUntilOpday = timedelta((12 - today.weekday()) % 7)
-            opday = today + daysUntilOpday
-            opday = opday.replace(hour = 18, minute = 0, second = 0)
-        elif time == "optime":
-            opday = today
-            opday = opday.replace(hour = 18 + modifier, minute = 0, second = 0)
-            if today > opday:
-                opday = opday + timedelta(days = 1)
+        opday = today
+        opday = opday.replace(hour = 18, minute = 0, second = 0)
+    
+        if today > opday:
+            opday = opday + timedelta(days = 1)
 
         return opday - today
 
@@ -176,23 +122,6 @@ class Utility(commands.Cog):
             await self.reply(ctx.message, command)
             if command == "reload":
                 outString = "Cog not previously loaded"
-
-        elif errorType == CalledProcessError:
-            if command == "ping":
-                outString = "Ping failed: {}".format(error.returncode)
-
-        elif errorType == UnknownTimeZoneError:
-            if command == "optime":
-                outString = "Invalid timezone"
-
-        elif errorType == commands.errors.CommandInvokeError:
-            if str(error) == "Command raised an exception: ValueError: hour must be in 0..23":
-                if command == "optime":
-                    outString = "Optime modifier is too large"
-
-            elif re.match("Command raised an exception: ExtensionNotLoaded:", str(error)):
-                if command == "reload":
-                    outString = "Cog not previously loaded"
 
         await self.reply(ctx.message, outString)
 

@@ -9,15 +9,6 @@ from discord.ext import commands
 
 logger = logging.getLogger('bot')
 
-DEV_IDS = [173123135321800704, 166337116106653696]  # Sven, border
-
-
-def is_dev():
-    async def predicate(ctx):
-        return ctx.author.id in DEV_IDS
-    return commands.check(predicate)
-
-
 class Dev(commands.Cog):
     '''Contains commands usable by developers'''
 
@@ -28,7 +19,7 @@ class Dev(commands.Cog):
     # ===Commands=== #
 
     @commands.command(name = "logs", hidden = True)
-    @is_dev()
+    @commands.is_owner()
     async def _logs(self, ctx, logName):
         for fileName in os.listdir("logs/"):
             if re.match(logName, fileName):
@@ -41,49 +32,49 @@ class Dev(commands.Cog):
             await ctx.channel.send("bot.log", file = File("logs/bot.log", filename = "bot.log"))
 
     @commands.command(name = "load", hidden = True)
-    @is_dev()
+    @commands.is_owner()
     async def _load(self, ctx, ext: str):
         self.bot.load_extension("cogs." + ext)
         logger.info("=========Loaded %s extension=========", ext)
         await self.utility.reply(ctx.message, "Loaded {} extension".format(ext))
 
     @commands.command(name = "resources", hidden = True)
-    @is_dev()
+    @commands.is_owner()
     async def _resources(self, ctx):
         outString = "```\n{}```".format("\n".join(os.listdir("resources/")))
         await self.utility.reply(ctx.message, outString)
 
     @commands.command(name = "getres", hidden = True)
-    @is_dev()
+    @commands.is_owner()
     async def _getres(self, ctx, resource):
         await self.utility.getResource(ctx, resource)
 
     @commands.command(name = "setres", hidden = True)
-    @is_dev()
+    @commands.is_owner()
     async def _setres(self, ctx):
         await self.utility.setResource(ctx)
 
     @commands.command(name = "reload", hidden = True)
-    @is_dev()
+    @commands.is_owner()
     async def _reload(self, ctx, ext: str):
         self.bot.reload_extension("cogs." + ext)
         logger.info("=========Reloaded %s extension=========", ext)
         await self.utility.reply(ctx.message, "Reloaded {} extension".format(ext))
 
     @commands.command(name = "restart", hidden = True)
-    @is_dev()
+    @commands.is_owner()
     async def _restart(self, ctx):
         print("============ RESTARTING ============")
         await self.utility.reply(ctx.message, "Restarting")
         ArcommBot.restart()
 
     @commands.command(name = "shutdown", hidden = True)
-    @is_dev()
+    @commands.is_owner()
     async def _shutdown(self):
         sys.exit()
 
     @commands.command(name = "update", hidden = True)
-    @is_dev()
+    @commands.is_owner()
     async def _update(self, ctx):
         attachments = ctx.message.attachments
 
@@ -112,10 +103,42 @@ class Dev(commands.Cog):
             logger.debug("Found no attachment")
 
     @commands.command(name = "upload", hidden = True)
-    @is_dev()
+    @commands.is_owner()
     async def _upload(self, ctx):
         filename = await self._update(ctx)
         await self._reload(ctx, filename)
+
+    @commands.command()
+    @commands.is_owner()
+    async def config(self, ctx):
+        """Return or overwrite the config file
+
+        Usage:
+            .config
+            -- Get current config
+            .config <<with attached file called config.ini>>
+            -- Overwrites config, a backup is saved"""
+
+        if ctx.message.attachments == []:
+            await self.utility.getResource(ctx, "config.ini")
+        elif ctx.message.attachments[0].filename == "config.ini":
+            await self.utility.setResource(ctx)
+
+    @commands.command()
+    @commands.is_owner()
+    async def recruitpost(self, ctx):
+        """Return or overwrite the recruitment post
+
+        Usage:
+            .recruitpost
+            -- Get current recruit post
+            .recruitpost <<with attached file called recruit_post.md>>
+            -- Overwrites recruitpost, a backup is saved"""
+
+        if ctx.message.attachments == []:
+            await self.utility.getResource(ctx, "recruit_post.md")
+        elif ctx.message.attachments[0].filename == "recruit_post.md":
+            await self.utility.setResource(ctx)
 
     # ===Listeners=== #
 
