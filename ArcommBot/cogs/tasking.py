@@ -18,8 +18,6 @@ from pytz import timezone
 
 from a3s_to_json import repository
 
-logger = logging.getLogger('bot')
-
 config = configparser.ConfigParser()
 config.read('resources/config.ini')
 
@@ -95,26 +93,23 @@ class Tasking(commands.Cog):
     async def attendanceTask(self):
         '''Remind admins to take attendance on opday'''
 
-        logger.debug("attendanceTask called")
         targetTimeslot = [17, 20]  # 5pm -> 8pm
 
         now = datetime.utcnow()
         # now = datetime(2020, 4, 25, 17)
         if now.weekday() == 5:  # Saturday
             if now.hour >= targetTimeslot[0] and now.hour <= targetTimeslot[1]:
-                logger.debug("Called within timeslot")
                 await self.attendancePost()
 
     @attendanceTask.before_loop
     async def before_attendanceTask(self):
         """Sync up attendanceTask to on the hour"""
-        logger.debug("before_attendanceTask called")
         await self.bot.wait_until_ready()
 
         now = datetime.utcnow()
         # now = datetime(now.year, now.month, now.day, 16, 59, 55)
         future = datetime(now.year, now.month, now.day, now.hour + 1)
-        logger.debug("%d seconds until attendanceTask called", (future - now).seconds)
+        logging.debug("%d seconds until attendanceTask called", (future - now).seconds)
 
         await asyncio.sleep((future - now).seconds)
 
@@ -155,7 +150,6 @@ class Tasking(commands.Cog):
                     lastDatetime['datetime'] = event[3]
                     asyncio.Task(self.announce(timeUntil, event[1], event[2], event[3]))
             else:
-                logger.debug('No event popped')
                 break
 
         with open('resources/calendar_datetime.json', 'w') as f:
@@ -163,8 +157,6 @@ class Tasking(commands.Cog):
 
     @tasks.loop(hours = 1)
     async def modcheckTask(self):
-        logger.debug("modcheckTask called")
-
         githubChanged, githubPost = await self.handleGithub()
         cupChanged, cupPost = await self.handleCup()
         steamChanged, steamPost = await self.handleSteam()
@@ -186,19 +178,15 @@ class Tasking(commands.Cog):
 
     @tasks.loop(hours = 24)
     async def recruitTask(self):
-        logger.debug("recruitTask called")
-
         targetDays = [0, 2, 4]  # Monday, Wednesday, Friday
         now = datetime.utcnow()
         # now = datetime(2020, 4, 22) #A Wednesday
         if now.weekday() in targetDays:
-            logger.debug("Called within targetDays")
             await self.recruitmentPost(self.utility.channels['staff'], pingAdmins = True)
 
     @recruitTask.before_loop
     async def before_recruitTask(self):
         """Sync up recruitTask to targetHour:targetMinute:00"""
-        logger.debug("before_recruitTask called")
         await self.bot.wait_until_ready()
 
         targetHour = 17
@@ -209,10 +197,9 @@ class Tasking(commands.Cog):
         future = datetime(now.year, now.month, now.day, targetHour, targetMinute, 0, 0)
 
         if now.hour >= targetHour and now.minute > targetMinute:
-            logger.debug("Missed timeslot, adding a day")
             future += timedelta(days = 1)
 
-        logger.debug("%d seconds until recruitTask called", (future - now).seconds)
+        logging.debug("%d seconds until recruitTask called", (future - now).seconds)
 
         await asyncio.sleep((future - now).seconds)
 
@@ -228,13 +215,12 @@ class Tasking(commands.Cog):
     @presenceTask.before_loop
     async def before_presenceTask(self):
         """Sync up presenceTask to on the minute"""
-        logger.debug("before_presenceTask called")
         await self.bot.wait_until_ready()
 
         now = datetime.utcnow()
         # now = datetime(now.year, now.month, now.day, 16, 59, 55)
         future = datetime(now.year, now.month, now.day, now.hour, now.minute + 1)
-        logger.debug("%d seconds until presenceTask called", (future - now).seconds)
+        logging.debug("%d seconds until presenceTask called", (future - now).seconds)
 
         await asyncio.sleep((future - now).seconds)
 
@@ -271,13 +257,10 @@ class Tasking(commands.Cog):
         await self.utility.send_message(channel, outString)
 
     async def attendancePost(self):
-        logger.debug("attendancePost called")
-
         outString = "<@&{}> Collect attendance!".format(self.utility.roles['admin'])
         await self.utility.send_message(self.utility.channels['admin'], outString)
 
     async def recruitmentPost(self, channel, pingAdmins = False):
-        logger.debug("recruitmentPost called")
         if pingAdmins:
             introString = "<@&{}> Post recruitment on <https://www.reddit.com/r/FindAUnit>".format(self.utility.roles['admin'])
         else:
@@ -341,8 +324,6 @@ class Tasking(commands.Cog):
         return True, updatePost
 
     async def handleGithub(self):
-        logger.debug("handleGithub called")
-
         if self.resourcesLocked:
             await self.utility.send_message(self.utility.channels["testing"], "github res locked")
             return False, ""
@@ -367,7 +348,7 @@ class Tasking(commands.Cog):
 
             async with self.session.get(url, headers = headers) as response:
                 if response.status == 200:  # Repo has been updated
-                    logger.info("Response 200 Success: %s", mod)
+                    logging.info("Response 200 Success: %s", mod)
                     repoChanged = True
 
                     lastModified['github'][mod] = response.headers['Last-Modified']
@@ -378,7 +359,7 @@ class Tasking(commands.Cog):
                                                                                           changelogUrl)
                 else:
                     if response.status != 304:  # 304 = repo not updated
-                        logger.warning("%s GET error: %s %s - %s", mod, response.status, response.reason,
+                        logging.warning("%s GET error: %s %s - %s", mod, response.status, response.reason,
                                        await response.text())
 
         with open('resources/last_modified.json', 'w') as f:
@@ -389,8 +370,6 @@ class Tasking(commands.Cog):
         return repoChanged, updatePost
 
     async def handleCup(self):
-        logger.debug("handleCup called")
-
         if self.resourcesLocked:
             await self.utility.send_message(self.utility.channels["testing"], "cup res locked")
             return False, ""
@@ -406,7 +385,6 @@ class Tasking(commands.Cog):
 
         async with self.session.get('https://www.cup-arma3.org/download') as response:
             if response.status == 200:
-                logger.info("Response 200 - Success")
                 soup = BeautifulSoup(await response.text(), features = "lxml")
 
                 for header in soup.find_all('h3'):
@@ -416,17 +394,16 @@ class Tasking(commands.Cog):
 
                     if modName in lastModified['cup']:
                         if modVersion != lastModified['cup'][modName]:
-                            logger.info("Mod '%s' has been updated", modName)
+                            logging.info("Mod '%s' has been updated", modName)
 
                             repoChanged = True
                             lastModified['cup'][modName] = modVersion
 
                             updatePost += "**{}** has released a new version ({})\n".format(modName, modVersion)
                     else:
-                        logger.debug("Mod '%s' not in lastModified", modName)
                         lastModified['cup'][modName] = modVersion
             else:
-                logger.warning("cup GET error: %s %s - %s", response.status, response.reason, await response.text())
+                logging.warning("cup GET error: %s %s - %s", response.status, response.reason, await response.text())
 
         with open('resources/last_modified.json', 'w') as f:
             json.dump(lastModified, f)
@@ -436,8 +413,6 @@ class Tasking(commands.Cog):
         return repoChanged, updatePost
 
     async def handleSteam(self):
-        logger.debug("handleSteam called")
-
         if self.resourcesLocked:
             await self.utility.send_message(self.utility.channels["testing"], "steam res locked")
             return False, ""
@@ -462,7 +437,6 @@ class Tasking(commands.Cog):
 
         async with self.session.post(steamUrl, data = data) as response:
             if response.status == 200:
-                logger.info("Response 200 - Success")
                 response = await response.json()
                 filedetails = response['response']['publishedfiledetails']
 
@@ -472,7 +446,7 @@ class Tasking(commands.Cog):
 
                     if modName in lastModified['steam']:
                         if timeUpdated != lastModified['steam'][modName]:
-                            logger.info("Mod '%s' has been updated", modName)
+                            logging.info("Mod '%s' has been updated", modName)
 
                             repoChanged = True
                             lastModified['steam'][modName] = timeUpdated
@@ -481,10 +455,9 @@ class Tasking(commands.Cog):
                                             "<https://steamcommunity.com/sharedfiles/filedetails/changelog/{}>".format(mod['publishedfileid']))
                             updatePost += "```\n{}```\n".format(await self.getSteamChangelog(mod['publishedfileid']))
                     else:
-                        logger.info("Mod '%s' added to lastModified", modName)
                         lastModified['steam'][modName] = timeUpdated
             else:
-                logger.warning("steam POST error: %s %s - %s", response.status, response.reason, await response.text())
+                logging.warning("steam POST error: %s %s - %s", response.status, response.reason, await response.text())
 
         with open('resources/last_modified.json', 'w') as f:
             json.dump(lastModified, f)
@@ -508,14 +481,14 @@ class Tasking(commands.Cog):
     # ===Listeners=== #
 
     def cog_unload(self):
-        logger.warning("Cancelling tasks...")
+        logging.warning("Cancelling tasks...")
         self.calendarTask.cancel()
         self.attendanceTask.cancel()
         self.modcheckTask.cancel()
         self.recruitTask.cancel()
         self.presenceTask.cancel()
         self.a3syncTask.cancel()
-        logger.warning("Tasks cancelled at %s", datetime.now())
+        logging.warning("Tasks cancelled at %s", datetime.now())
 
     @commands.Cog.listener()
     async def on_ready(self):

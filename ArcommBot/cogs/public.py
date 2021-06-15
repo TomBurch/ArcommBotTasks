@@ -1,13 +1,10 @@
 import configparser
 import json
-import logging
 import os
 
 import aiohttp
 from bs4 import BeautifulSoup
 from discord.ext import commands
-
-logger = logging.getLogger('bot')
 
 config = configparser.ConfigParser()
 config.read('resources/config.ini')

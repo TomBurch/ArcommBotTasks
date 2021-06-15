@@ -20,7 +20,6 @@ class Utility(commands.Cog):
             self.channels = {}
             self.roles = {}
             self.cog_setup()
-            self.logger = logging.getLogger('bot')
 
     def cog_setup(self):
         for channel in self.config['channels']:
@@ -36,7 +35,6 @@ class Utility(commands.Cog):
 
         await channel.trigger_typing()
         newMessage = await channel.send(message)
-        self.logger.info("Sent message to %s : %s", channel, newMessage.content)
 
         return newMessage
 
@@ -45,7 +43,6 @@ class Utility(commands.Cog):
 
         await message.channel.trigger_typing()
         newMessage = await message.channel.send(response, reference = message.to_reference())
-        self.logger.info("Sent message to %s : %s", message.channel, newMessage.content)
 
         return newMessage
 
@@ -128,7 +125,7 @@ class Utility(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         print("===Bot connected/reconnected===")
-        self.logger.info("===Bot connected/reconnected===")
+        logging.info("===Bot connected/reconnected===")
         self.cog_setup()
 
 

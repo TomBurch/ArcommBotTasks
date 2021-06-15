@@ -7,8 +7,6 @@ import ArcommBot
 from discord import File
 from discord.ext import commands
 
-logger = logging.getLogger('bot')
-
 class Dev(commands.Cog):
     '''Contains commands usable by developers'''
 
@@ -35,7 +33,7 @@ class Dev(commands.Cog):
     @commands.is_owner()
     async def _load(self, ctx, ext: str):
         self.bot.load_extension("cogs." + ext)
-        logger.info("=========Loaded %s extension=========", ext)
+        logging.info("=========Loaded %s extension=========", ext)
         await self.utility.reply(ctx.message, "Loaded {} extension".format(ext))
 
     @commands.command(name = "resources", hidden = True)
@@ -58,7 +56,7 @@ class Dev(commands.Cog):
     @commands.is_owner()
     async def _reload(self, ctx, ext: str):
         self.bot.reload_extension("cogs." + ext)
-        logger.info("=========Reloaded %s extension=========", ext)
+        logging.info("=========Reloaded %s extension=========", ext)
         await self.utility.reply(ctx.message, "Reloaded {} extension".format(ext))
 
     @commands.command(name = "restart", hidden = True)
@@ -79,28 +77,17 @@ class Dev(commands.Cog):
         attachments = ctx.message.attachments
 
         if attachments != []:
-            logger.debug("Found attachment")
             newCog = attachments[0]
             cogs = os.listdir("cogs/")
 
             if newCog.filename in cogs:
-                logger.debug("Found filename in cogs")
                 tempFilename = "cogs/temp_{}".format(newCog.filename)
-
-                logger.debug("Saving temp file")
                 await newCog.save(tempFilename)
 
-                logger.debug("Replacing cog file")
                 os.replace(tempFilename, "cogs/{}".format(newCog.filename))
-
-                logger.info("%s successfully updated", newCog.filename)
                 await self.utility.reply(ctx.message, "{} successfully updated".format(newCog.filename))
 
                 return newCog.filename.split(".")[0]
-
-            logger.debug("Filename not in cogs")
-        else:
-            logger.debug("Found no attachment")
 
     @commands.command(name = "upload", hidden = True)
     @commands.is_owner()
