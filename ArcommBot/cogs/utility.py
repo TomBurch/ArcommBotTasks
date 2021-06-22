@@ -89,7 +89,7 @@ class Utility(commands.Cog):
     @commands.Cog.listener()
     async def on_command(self, ctx):
         cogName = ctx.cog.qualified_name if ctx.cog is not None else None
-        self.logger.info("[%s] command [%s] called by [%s]", cogName, ctx.message.content, ctx.message.author)
+        logging.info("[%s] command [%s] called by [%s]", cogName, ctx.message.content, ctx.message.author)
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):

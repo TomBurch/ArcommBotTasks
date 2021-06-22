@@ -27,7 +27,7 @@ SCOPES = ['https://www.googleapis.com/auth/calendar']
 SERVICE_ACCOUNT_FILE = 'resources/restricted/arcommbot-1c476e6f4869.json'
 
 credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-service = build('calendar', 'v3', credentials = credentials)
+service = build('calendar', 'v3', credentials = credentials, cache_discovery = False)
 
 
 class CalendarDB():
