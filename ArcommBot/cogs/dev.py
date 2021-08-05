@@ -16,6 +16,11 @@ class Dev(commands.Cog):
 
     # ===Commands=== #
 
+    @commands.command()
+    async def ping(self, ctx):
+        """Check bot response"""
+        await self.utility.reply(ctx.message, "Pong!")
+
     @commands.command(name = "logs", hidden = True)
     @commands.is_owner()
     async def _logs(self, ctx, logName):

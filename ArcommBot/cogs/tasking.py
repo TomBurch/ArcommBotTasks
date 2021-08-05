@@ -504,6 +504,8 @@ class Tasking(commands.Cog):
         self.presenceTask.start()
         self.a3syncTask.start()
 
+        await self.utility.send_message(self.utility.channels['testing'], "ArcommBot is fully loaded")
+
 
 def setup(bot):
     bot.add_cog(Tasking(bot))
