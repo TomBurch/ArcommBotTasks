@@ -413,63 +413,63 @@ class Tasking(commands.Cog):
         return repoChanged, updatePost
 
     async def handleSteam(self):
-        if self.resourcesLocked:
-            await self.utility.send_message(self.utility.channels["testing"], "steam res locked")
-            return False, ""
-        self.resourcesLocked = True
-
-        # https://partner.steamgames.com/doc/webapi/ISteamRemoteStorage
-        steamUrl = 'https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/'
-        lastModified = {}
-
-        with open('resources/last_modified.json', 'r') as f:
+        with open('resources/mods.json', 'r') as f:
             lastModified = json.load(f)
 
-        data = {'itemcount': len(config['steam'])}
-
-        i = 0
-        for modId in config['steam']:
-            data["publishedfileids[{}]".format(str(i))] = config['steam'][modId]
-            i += 1
+        mods = set(await self.getSteamMods(config['collections']['main']))
+        data = {'itemcount': len(mods)}
+        for i, mod in enumerate(mods):
+            data[f"publishedfileids[{i}]"] = mod
 
         updatePost = ""
         repoChanged = False
-
-        async with self.session.post(steamUrl, data = data) as response:
+        async with self.session.post("https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/", data = data) as response:
             if response.status == 200:
                 response = await response.json()
                 filedetails = response['response']['publishedfiledetails']
 
                 for mod in filedetails:
-                    modName = mod['title']
+                    modId = mod['publishedfileid']
                     timeUpdated = str(mod['time_updated'])
 
-                    if modName in lastModified['steam']:
-                        if timeUpdated != lastModified['steam'][modName]:
-                            logging.info("Mod '%s' has been updated", modName)
-
+                    if modId in lastModified['steam']:
+                        if timeUpdated != lastModified['steam'][modId]:
                             repoChanged = True
-                            lastModified['steam'][modName] = timeUpdated
+                            lastModified['steam'][modId] = timeUpdated
 
-                            updatePost += "**{}** has released a new version ({})\n{}\n".format(modName, "",
-                                            "<https://steamcommunity.com/sharedfiles/filedetails/changelog/{}>".format(mod['publishedfileid']))
-                            updatePost += "```\n{}```\n".format(await self.getSteamChangelog(mod['publishedfileid']))
+                            updatePost += "**{}** has released a new version ({})\n{}\n".format(mod['title'], "",
+                                            f"<https://steamcommunity.com/sharedfiles/filedetails/changelog/{modId}>")
+                            updatePost += "```\n{}```\n".format(await self.getSteamChangelog(modId))
                     else:
-                        lastModified['steam'][modName] = timeUpdated
+                        lastModified['steam'][modId] = timeUpdated
             else:
-                logging.warning("steam POST error: %s %s - %s", response.status, response.reason, await response.text())
+                await self.utility.send_message(self.utility.channels["testing"], "steam POST error: %s %s - %s" % (response.status, response.reason, await response.text()))
 
-        with open('resources/last_modified.json', 'w') as f:
+        with open('resources/mods.json', 'w') as f:
             json.dump(lastModified, f)
-
-        self.resourcesLocked = False
 
         return repoChanged, updatePost
 
-    async def getSteamChangelog(self, modId):
-        steamUrl = "https://steamcommunity.com/sharedfiles/filedetails/changelog/{}".format(modId)
+    async def getSteamMods(self, collection):
+        data = {'collectioncount': 1, 'publishedfileids[0]': collection}
+        mods = []
 
-        async with self.session.get(steamUrl) as response:
+        async with self.session.post('https://api.steampowered.com/ISteamRemoteStorage/GetCollectionDetails/v1/', data = data) as response:
+            j = await response.json()
+
+            for collection in j['response']['collectiondetails']:
+                for child in collection['children']:
+                    if child['filetype'] == 0:
+                        mods.append(child['publishedfileid'])
+                    elif child['filetype'] == 2:
+                        mods += await self.getSteamMods(child['publishedfileid'])
+
+        return mods
+
+    async def getSteamChangelog(self, modId):
+        url = f"https://steamcommunity.com/sharedfiles/filedetails/changelog/{modId}"
+
+        async with self.session.get(url) as response:
             if response.status == 200:
                 soup = BeautifulSoup(await response.text(), features = "lxml")
                 headline = soup.find("div", {"class": "changelog headline"})
