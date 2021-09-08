@@ -160,9 +160,14 @@ class Tasking(commands.Cog):
         githubChanged, githubPost = await self.handleGithub()
         steamChanged, steamPost = await self.handleSteam()
 
-        if githubChanged or steamChanged:
-            outString = "<@&{}>\n{}{}".format(self.utility.roles['admin'], githubPost, steamPost)
-            await self.utility.send_message(self.utility.channels['staff'], outString)
+        try:
+            if githubChanged or steamChanged:
+                outString = "<@&{}>\n{}{}".format(self.utility.roles['admin'], githubPost, steamPost)
+                await self.utility.send_message(self.utility.channels['staff'], outString)
+        except Exception as e:
+            print(githubPost)
+            print(steamPost)
+            await self.utility.send_message(self.utility.channels['testing'], f"Modcheck error: {e}")
 
     @tasks.loop(minutes = 10)
     async def a3syncTask(self):
