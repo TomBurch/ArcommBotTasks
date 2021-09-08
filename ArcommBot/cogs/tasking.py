@@ -158,11 +158,10 @@ class Tasking(commands.Cog):
     @tasks.loop(hours = 1)
     async def modcheckTask(self):
         githubChanged, githubPost = await self.handleGithub()
-        cupChanged, cupPost = await self.handleCup()
         steamChanged, steamPost = await self.handleSteam()
 
-        if githubChanged or cupChanged or steamChanged:
-            outString = "<@&{}>\n{}{}{}".format(self.utility.roles['admin'], githubPost, cupPost, steamPost)
+        if githubChanged or steamChanged:
+            outString = "<@&{}>\n{}{}".format(self.utility.roles['admin'], githubPost, steamPost)
             await self.utility.send_message(self.utility.channels['staff'], outString)
 
     @tasks.loop(minutes = 10)
@@ -361,49 +360,6 @@ class Tasking(commands.Cog):
                     if response.status != 304:  # 304 = repo not updated
                         logging.warning("%s GET error: %s %s - %s", mod, response.status, response.reason,
                                        await response.text())
-
-        with open('resources/last_modified.json', 'w') as f:
-            json.dump(lastModified, f)
-
-        self.resourcesLocked = False
-
-        return repoChanged, updatePost
-
-    async def handleCup(self):
-        if self.resourcesLocked:
-            await self.utility.send_message(self.utility.channels["testing"], "cup res locked")
-            return False, ""
-        self.resourcesLocked = True
-
-        lastModified = {}
-
-        with open('resources/last_modified.json', 'r') as f:
-            lastModified = json.load(f)
-
-        updatePost = ""
-        repoChanged = False
-
-        async with self.session.get('https://www.cup-arma3.org/download') as response:
-            if response.status == 200:
-                soup = BeautifulSoup(await response.text(), features = "lxml")
-
-                for header in soup.find_all('h3'):
-                    modName = header.text
-                    modVersion = header.parent.findNext("p").text
-                    modVersion = modVersion.split()[0]
-
-                    if modName in lastModified['cup']:
-                        if modVersion != lastModified['cup'][modName]:
-                            logging.info("Mod '%s' has been updated", modName)
-
-                            repoChanged = True
-                            lastModified['cup'][modName] = modVersion
-
-                            updatePost += "**{}** has released a new version ({})\n".format(modName, modVersion)
-                    else:
-                        lastModified['cup'][modName] = modVersion
-            else:
-                logging.warning("cup GET error: %s %s - %s", response.status, response.reason, await response.text())
 
         with open('resources/last_modified.json', 'w') as f:
             json.dump(lastModified, f)
