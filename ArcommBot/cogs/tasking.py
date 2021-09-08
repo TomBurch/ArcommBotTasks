@@ -312,12 +312,6 @@ class Tasking(commands.Cog):
 
         with open('resources/last_modified.json', 'w') as f:
             json.dump(lastModified, f)
-            print(lastModified)
-
-        lastModified = {}
-        with open('resources/last_modified.json', 'r') as f:
-            lastModified = json.load(f)
-            print(lastModified)
         
         self.resourcesLocked = False
         return True, updatePost
