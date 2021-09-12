@@ -173,7 +173,11 @@ class Tasking(commands.Cog):
     async def a3syncTask(self):
         a3syncChanged, a3syncPost = await self.handleA3Sync()
         if a3syncChanged:
-            await self.utility.send_message(self.utility.channels["announcements"], a3syncPost)
+            try:
+                await self.utility.send_message(self.utility.channels["announcements"], a3syncPost)
+            except Exception as e:
+                print(a3syncPost)
+                await self.utility.send_message(self.utility.channels['testing'], f"A3sync message error: {e}")
 
     @a3syncTask.before_loop
     async def before_a3syncTask(self):
@@ -429,7 +433,8 @@ class Tasking(commands.Cog):
                 soup = BeautifulSoup(await response.text(), features = "lxml")
                 headline = soup.find("div", {"class": "changelog headline"})
                 return headline.findNext("p").get_text(separator = "\n")
-            print("steam GET error: {} {} - {}".format(response.status, response.reason, await response.text()))
+            else:
+                await self.utility.send_message(self.utility.channels['testing'], "steam GET error: {} {} - {}".format(response.status, response.reason, await response.text()))
 
         return ""
 
