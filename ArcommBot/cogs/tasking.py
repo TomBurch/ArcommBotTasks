@@ -89,30 +89,6 @@ class Tasking(commands.Cog):
 
     # ===Tasks=== #
 
-    @tasks.loop(hours = 1)
-    async def attendanceTask(self):
-        '''Remind admins to take attendance on opday'''
-
-        targetTimeslot = [17, 20]  # 5pm -> 8pm
-
-        now = datetime.utcnow()
-        # now = datetime(2020, 4, 25, 17)
-        if now.weekday() == 5:  # Saturday
-            if now.hour >= targetTimeslot[0] and now.hour <= targetTimeslot[1]:
-                await self.attendancePost()
-
-    @attendanceTask.before_loop
-    async def before_attendanceTask(self):
-        """Sync up attendanceTask to on the hour"""
-        await self.bot.wait_until_ready()
-
-        now = datetime.utcnow()
-        # now = datetime(now.year, now.month, now.day, 16, 59, 55)
-        future = datetime(now.year, now.month, now.day, now.hour + 1)
-        logging.debug("%d seconds until attendanceTask called", (future - now).seconds)
-
-        await asyncio.sleep((future - now).seconds)
-
     @tasks.loop(minutes = 1)
     async def calendarTask(self):
         '''Check google calendar for any new events, and post announcements for them'''
@@ -443,7 +419,6 @@ class Tasking(commands.Cog):
     def cog_unload(self):
         logging.warning("Cancelling tasks...")
         self.calendarTask.cancel()
-        self.attendanceTask.cancel()
         self.modcheckTask.cancel()
         self.recruitTask.cancel()
         self.presenceTask.cancel()
@@ -458,7 +433,6 @@ class Tasking(commands.Cog):
         self.calendar.storeCalendar()
 
         self.calendarTask.start()
-        self.attendanceTask.start()
         self.modcheckTask.start()
         self.recruitTask.start()
         self.presenceTask.start()
