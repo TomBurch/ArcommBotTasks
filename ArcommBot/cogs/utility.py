@@ -29,7 +29,7 @@ class Utility(commands.Cog):
         for role in self.config['roles']:
             self.roles[role] = int(self.config['roles'][role])
 
-        self.REPO_URL = "http://108.61.34.58/main/"
+        self.REPO_URL = "https://arma.arcomm.co.uk/repo/"
 
     async def send_message(self, channel, message: str):
         """Send a message to the text channel"""
