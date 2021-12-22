@@ -1,6 +1,7 @@
 import asyncio
 import configparser
 from datetime import datetime, timedelta
+from httplib2 import ServerNotFoundError
 import json
 import logging
 import os
@@ -77,6 +78,27 @@ class CalendarDB():
         return event
 
 
+class LastModified():
+    resourcesLocked = False
+
+    @classmethod
+    def uses_lastModified(cls, func):
+        async def wrapper(cog):
+            if LastModified.resourcesLocked:
+                return False, f"{str(func)} res locked"
+            else:
+                LastModified.resourcesLocked = True
+                try:
+                    result = await func(cog)
+                    LastModified.resourcesLocked = False
+                    return result
+                except Exception as e:
+                    LastModified.resourcesLocked = False
+                    return False, f"Error running {str(func)}:\n{str(e)}"
+
+        return wrapper
+
+
 class Tasking(commands.Cog):
     '''Contains scheduled tasks'''
 
@@ -85,7 +107,6 @@ class Tasking(commands.Cog):
         self.utility = self.bot.get_cog("Utility")
         self.calendar = CalendarDB()
         self.session = aiohttp.ClientSession()
-        self.resourcesLocked = False
 
     # ===Tasks=== #
 
@@ -108,7 +129,12 @@ class Tasking(commands.Cog):
                     if lastDT < now:
                         lastDatetime['datetime'] = "now"
 
-        self.calendar.storeCalendar(lastDatetime['datetime'])
+        try:
+            self.calendar.storeCalendar(lastDatetime['datetime'])
+        except ServerNotFoundError as e:
+            self.utility.send_message(self.utility.channels["testing"], e)
+            return
+
         newAnnouncement = True
 
         while newAnnouncement:
@@ -136,6 +162,12 @@ class Tasking(commands.Cog):
         githubChanged, githubPost = await self.handleGithub()
         steamChanged, steamPost = await self.handleSteam()
 
+        if githubPost.startswith("Error"):
+            await self.utility.send_message(self.utility.channels['testing'], githubPost)
+
+        if steamPost.startswith("Error"):
+            await self.utility.send_message(self.utility.channels['testing'], steamPost)
+
         try:
             if githubChanged or steamChanged:
                 outString = "<@&{}>\n{}{}".format(self.utility.roles['admin'], githubPost, steamPost)
@@ -148,6 +180,9 @@ class Tasking(commands.Cog):
     @tasks.loop(minutes = 10)
     async def a3syncTask(self):
         a3syncChanged, a3syncPost = await self.handleA3Sync()
+        if a3syncPost.startswith("Error"):
+            await self.utility.send_message(self.utility.channels['testing'], a3syncPost)
+
         if a3syncChanged:
             try:
                 await self.utility.send_message(self.utility.channels["announcements"], a3syncPost)
@@ -252,11 +287,8 @@ class Tasking(commands.Cog):
 
         await channel.send(introString, file = File("resources/recruit_post.md", filename = "recruit_post.md"))
 
+    @LastModified.uses_lastModified
     async def handleA3Sync(self):
-        if self.resourcesLocked:
-            await self.utility.send_message(self.utility.channels["testing"], "a3sync res locked")
-            return False, ""
-        self.resourcesLocked = True
 
         url = "{}.a3s/".format(self.utility.REPO_URL)
         scheme = urlparse(url).scheme.capitalize
@@ -298,15 +330,10 @@ class Tasking(commands.Cog):
         with open('resources/last_modified.json', 'w') as f:
             json.dump(lastModified, f)
         
-        self.resourcesLocked = False
         return True, updatePost
 
+    @LastModified.uses_lastModified
     async def handleGithub(self):
-        if self.resourcesLocked:
-            await self.utility.send_message(self.utility.channels["testing"], "github res locked")
-            return False, ""
-        self.resourcesLocked = True
-
         repoUrl = 'https://api.github.com/repos'
         lastModified = {}
 
@@ -343,8 +370,6 @@ class Tasking(commands.Cog):
         with open('resources/last_modified.json', 'w') as f:
             json.dump(lastModified, f)
 
-        self.resourcesLocked = False
-
         return repoChanged, updatePost
 
     async def handleSteam(self):
@@ -374,7 +399,13 @@ class Tasking(commands.Cog):
 
                             updatePost += "**{}** has released a new version ({})\n{}\n".format(mod['title'], "",
                                             f"<https://steamcommunity.com/sharedfiles/filedetails/changelog/{modId}>")
-                            updatePost += "```\n{}```\n".format(await self.getSteamChangelog(modId))
+
+                            try:
+                                changelog = await self.getSteamChangelog(modId)
+                            except:
+                                changelog = "Error retrieving changelog"
+
+                            updatePost += "```\n{}```\n".format(changelog)
                     else:
                         lastModified['steam'][modId] = timeUpdated
             else:
