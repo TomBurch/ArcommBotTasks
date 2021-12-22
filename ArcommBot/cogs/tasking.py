@@ -162,10 +162,10 @@ class Tasking(commands.Cog):
         githubChanged, githubPost = await self.handleGithub()
         steamChanged, steamPost = await self.handleSteam()
 
-        if githubPost.startsWith("Error"):
+        if githubPost.startswith("Error"):
             await self.utility.send_message(self.utility.channels['testing'], githubPost)
 
-        if steamPost.startsWith("Error"):
+        if steamPost.startswith("Error"):
             await self.utility.send_message(self.utility.channels['testing'], steamPost)
 
         try:
@@ -180,7 +180,7 @@ class Tasking(commands.Cog):
     @tasks.loop(minutes = 10)
     async def a3syncTask(self):
         a3syncChanged, a3syncPost = await self.handleA3Sync()
-        if a3syncPost.startsWith("Error"):
+        if a3syncPost.startswith("Error"):
             await self.utility.send_message(self.utility.channels['testing'], a3syncPost)
 
         if a3syncChanged:
@@ -399,7 +399,13 @@ class Tasking(commands.Cog):
 
                             updatePost += "**{}** has released a new version ({})\n{}\n".format(mod['title'], "",
                                             f"<https://steamcommunity.com/sharedfiles/filedetails/changelog/{modId}>")
-                            updatePost += "```\n{}```\n".format(await self.getSteamChangelog(modId))
+
+                            try:
+                                changelog = await self.getSteamChangelog(modId)
+                            except:
+                                changelog = "Error retrieving changelog"
+
+                            updatePost += "```\n{}```\n".format(changelog)
                     else:
                         lastModified['steam'][modId] = timeUpdated
             else:
