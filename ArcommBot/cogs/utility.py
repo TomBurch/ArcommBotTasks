@@ -31,11 +31,11 @@ class Utility(commands.Cog):
 
         self.REPO_URL = "https://arma.arcomm.co.uk/repo/"
 
-    async def send_message(self, channel, message: str):
+    async def send_message(self, channel, content = None, embed = None):
         """Send a message to the text channel"""
 
         await channel.trigger_typing()
-        newMessage = await channel.send(message)
+        newMessage = await channel.send(content = content, embed = embed)
 
         return newMessage
 

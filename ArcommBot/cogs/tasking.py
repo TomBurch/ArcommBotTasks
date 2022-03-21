@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
-from discord import File, Game
+from discord import File, Game, Embed, Colour
 from discord.ext import commands, tasks
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
@@ -246,13 +246,8 @@ class Tasking(commands.Cog):
     # ===Utility=== #
 
     async def announce(self, timeUntil, summary, startTime, endTime):
-        startTime = datetime.strptime(startTime, "%Y-%m-%dT%H:%M:%S%z").astimezone(timezone("UTC"))
-        startTimeString = startTime.strftime('%H:%M:%S')
-
-        endTime = datetime.strptime(endTime, "%Y-%m-%dT%H:%M:%S%z").astimezone(timezone("UTC"))
-        endTimeString = endTime.strftime('%H:%M:%S')
-
-        timeUntilStr = str(timeUntil).split(".")[0]  # Remove microseconds
+        startTime = int(datetime.strptime(startTime, "%Y-%m-%dT%H:%M:%S%z").astimezone(timezone("UTC")).timestamp())
+        endTime = int(datetime.strptime(endTime, "%Y-%m-%dT%H:%M:%S%z").astimezone(timezone("UTC")).timestamp())
 
         ping = "@here"
         channel = self.utility.channels['op_news']
@@ -266,14 +261,19 @@ class Tasking(commands.Cog):
                 else:
                     return
 
-        outString = "{}\n```md\n# {}\n\nStarting in {}\n\nStart: {} UTC\nEnd:   {} UTC```".format(ping, summary, timeUntilStr,
-                                                                                                  startTimeString, endTimeString)
-        await self.utility.send_message(channel, outString)
+        embed2 = Embed(
+            title = summary,
+            description = f"Starting <t:{startTime}:R>",
+            colour = Colour.dark_red(),
+        )
 
+        embed1 = embed2.copy()
+        embed1.add_field(name = "Start", value = f"<t:{startTime}:t>", inline = True)
+        embed1.add_field(name = "End", value = f"<t:{endTime}:t>", inline = True)
+
+        await self.utility.send_message(channel, ping, embed1)
         await asyncio.sleep((timeUntil - timedelta(minutes = 5)).seconds)
-
-        outString = "{}\n```md\n# {}\n\nStarting in 5 minutes```".format(ping, summary)
-        await self.utility.send_message(channel, outString)
+        await self.utility.send_message(channel, ping, embed2)
 
     async def attendancePost(self):
         outString = "<@&{}> Collect attendance!".format(self.utility.roles['admin'])
