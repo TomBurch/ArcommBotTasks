@@ -275,10 +275,6 @@ class Tasking(commands.Cog):
         await asyncio.sleep((timeUntil - timedelta(minutes = 5)).seconds)
         await self.utility.send_message(channel, ping, embed2)
 
-    async def attendancePost(self):
-        outString = "<@&{}> Collect attendance!".format(self.utility.roles['admin'])
-        await self.utility.send_message(self.utility.channels['admin'], outString)
-
     async def recruitmentPost(self, channel, pingAdmins = False):
         if pingAdmins:
             introString = "<@&{}> Post recruitment on <https://www.reddit.com/r/FindAUnit>".format(self.utility.roles['admin'])
