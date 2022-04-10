@@ -23,6 +23,10 @@ config = configparser.ConfigParser()
 config.read('resources/config.ini')
 
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+ARCHUB_TOKEN = os.getenv('ARCHUB_TOKEN')
+ARCHUB_HEADERS = {
+    "Authorization": f"Bearer {ARCHUB_TOKEN}"
+}
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 SERVICE_ACCOUNT_FILE = 'resources/restricted/arcommbot-1c476e6f4869.json'
@@ -245,21 +249,39 @@ class Tasking(commands.Cog):
 
     # ===Utility=== #
 
+    async def getOperationMissions(self):
+        async with self.session.get("https://arcomm.co.uk/api/v1/operations/next", headers = ARCHUB_HEADERS) as response:
+            if response.status == 200:
+                json = await response.json()
+                return json
+            return []
+        
+    def missionTypeFromMode(self, mode):
+        if mode == 'coop':
+            return 'Co-op'
+        elif mode == 'adversarial':
+            return 'TvT'
+        elif mode == 'arcade':
+            return 'ARCade'
+        return None
+
     async def announce(self, timeUntil, summary, startTime, endTime):
         startTime = int(datetime.strptime(startTime, "%Y-%m-%dT%H:%M:%S%z").astimezone(timezone("UTC")).timestamp())
         endTime = int(datetime.strptime(endTime, "%Y-%m-%dT%H:%M:%S%z").astimezone(timezone("UTC")).timestamp())
 
         ping = "@here"
         channel = self.utility.channels['op_news']
+        eventType = None
 
         for event in config['calendar']:
             if re.search(event, summary.lower()) is not None:
+                eventType = event
                 eventArray = config['calendar'][event][1:-1].split(", ")
-                if eventArray[0] != "ignored":
-                    ping = "<@&{}>".format(self.utility.roles[eventArray[0]])
-                    channel = self.utility.channels[eventArray[1]]
-                else:
+                if eventArray[0] == "ignored":
                     return
+
+                ping = "<@&{}>".format(self.utility.roles[eventArray[0]])
+                channel = self.utility.channels[eventArray[1]]
 
         embed2 = Embed(
             title = summary,
@@ -270,6 +292,14 @@ class Tasking(commands.Cog):
         embed1 = embed2.copy()
         embed1.add_field(name = "Start", value = f"<t:{startTime}:t>", inline = True)
         embed1.add_field(name = "End", value = f"<t:{endTime}:t>", inline = True)
+
+        if eventType == "main":
+            for mission in await self.getOperationMissions():
+                missionMaker = mission['maker']
+                missionType = self.missionTypeFromMode(mission['mode'])
+                link = "https://arcomm.co.uk/hub/missions/{}".format(mission['id'])
+                
+                embed1.add_field(name = mission["display_name"], value = f"[{missionType} by {missionMaker}]({link})", inline = False)
 
         await self.utility.send_message(channel, ping, embed1)
         await asyncio.sleep((timeUntil - timedelta(minutes = 5)).seconds)
