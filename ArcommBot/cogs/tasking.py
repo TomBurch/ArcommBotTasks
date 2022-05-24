@@ -173,9 +173,17 @@ class Tasking(commands.Cog):
             await self.utility.send_message(self.utility.channels['testing'], steamPost)
 
         try:
-            if githubChanged or steamChanged:
-                outString = "<@&{}>\n{}{}".format(self.utility.roles['admin'], githubPost, steamPost)
+            if not (githubChanged or steamChanged):
+                return
+
+            outString = "<@&{}>\n{}{}".format(self.utility.roles['admin'], githubPost, steamPost)
+            if len(outString) <= 1950:
                 await self.utility.send_message(self.utility.channels['staff'], outString)
+            else:
+                logging.info("Sending modupdate as file")
+                with open("resources/modupdate.txt", "w") as file:
+                    file.write(outString)
+                await self.utility.channels['staff'].send(f"<@&{self.utility.roles['admin']}> Mod update", file = File("resources/modupdate.txt", filename = "modupdate.txt"))
         except Exception as e:
             print(githubPost)
             print(steamPost)
@@ -477,7 +485,7 @@ class Tasking(commands.Cog):
         logging.warning("Cancelling tasks...")
         self.calendarTask.cancel()
         self.modcheckTask.cancel()
-        self.recruitTask.cancel()
+        # self.recruitTask.cancel()
         self.presenceTask.cancel()
         self.a3syncTask.cancel()
         logging.warning("Tasks cancelled at %s", datetime.now())
@@ -491,7 +499,7 @@ class Tasking(commands.Cog):
 
         self.calendarTask.start()
         self.modcheckTask.start()
-        self.recruitTask.start()
+        # self.recruitTask.start()
         self.presenceTask.start()
         self.a3syncTask.start()
 
